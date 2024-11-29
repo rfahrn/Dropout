@@ -1,0 +1,52 @@
+
+#PROD_PATH: C:\sas\python\data\PROD.xlsx
+#ATC_PROD_PATH: C:\sas\python\data\ATC_PROD.csv
+#PATH_HELPERS: C:\sas\python\handover\handover\Helpers
+#GENERATED_FILE_CHECK: C:\sas\python\handover\handover\Generated data\check_new.pkl
+#GENERATED_FILE_MARGIN_ORDERS: C:\sas\python\handover\handover\Generated data\margin_new.pkl
+#GENERATED_FILE_FILTERED_ORDERS: C:\sas\python\handover\handover\Generated data\filtered_orders_new.pkl
+#GENERATED_TRAINING_DATA: C:\sas\python\handover\handover\Generated data\data_training.pkl
+#GENERATED_TESTING_DATA: C:\sas\python\handover\handover\Generated data\data_testing.pkl
+#GENERATED_RFM: C:\sas\python\handover\handover\Generated data\rfm_seg.pkl
+#NEW_FILE_CUST: C:\sas\python\data\CUST.csv
+#NEW_FILE_ORDERS: C:\sas\python\data\ORDER.csv
+#NEW_FILE_MVS: C:\sas\python\data\MVS.xlsx
+#MODEL_PATH: C:\sas\python\handover\handover\Models\dropout_model.pkl
+#TESTING_OUTPUT: C:\sas\python\handover\handover\Testing\test_output.csv
+#WHOLE_DATA: C:\sas\python\handover\handover\Generated data\whole_data.pkl
+#TESTING_WHOLE_DATA_OUTPUT: C:\sas\python\handover\handover\Testing\test_all.csv
+
+DATA_PATH: P:\python\Rebecka\data\
+PROCESSED_DATA_PATH: P:\python\Rebecka\processed\processed_data
+TRAIN_FILE: P:\python\Rebecka\Preprocessing\train_data.csv
+VAL_FILE: P:\python\Rebecka\Preprocessing\val_data.csv
+TEST_FILE: P:\python\Rebecka\Preprocessing\test_data.csv
+TARGET_COLUMN: active_flag
+
+
+DESCRIPTION_PATH: N:\Business\94_Business_Intelligence\prdl_csv\atc.csv
+PROD_PATH: P:\python\data\PROD.xlsx
+ATC_PROD_PATH: P:\python\data\ATC_PROD.csv
+PATH_HELPERS: P:\python\handover\handover\Helpers
+GENERATED_FILE_CHECK: P:\python\handover\handover\Generated data\check_new.pkl
+GENERATED_FILE_MARGIN_ORDERS: P:\python\handover\handover\Generated data\margin_new.pkl
+GENERATED_FILE_FILTERED_ORDERS: P:\python\handover\handover\Generated data\filtered_orders_new.pkl
+GENERATED_TRAINING_DATA: P:\python\handover\handover\Generated data\data_training.pkl
+GENERATED_TESTING_DATA: P:\python\handover\handover\Generated data\data_testing.pkl
+GENERATED_RFM: P:\python\handover\handover\Generated data\rfm_seg.pkl
+
+NEW_FILE_CUST: P:\python\data\CUST.csv
+NEW_FILE_ORDERS: P:\python\data\ORDER.csv
+NEW_FILE_MVS:  P:\python\data\MVS.xlsx
+
+CUST: P:\python\data\CUST.csv
+ORDERS: P:\python\data\ORDER.csv
+MVS: P:\python\data\MVS.xlsx
+MOLECULES: P:\python\data\MOLECULES.csv
+ART_INFO: P:\python\data\ART_INFO.csv
+MODEL_PATH: P:\python\handover\handover\Models\dropout_model.pkl
+TESTING_OUTPUT: P:\python\handover\handover\Testing\test_output.csv
+WHOLE_DATA: P:\python\handover\handover\Generated data\whole_data.pkl
+TESTING_WHOLE_DATA_OUTPUT: P:\python\handover\handover\Testing\test_all.csv
+
+
