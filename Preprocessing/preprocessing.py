@@ -2,7 +2,7 @@
 import os
 import sys
 import polars as pl
-from utils import clean_company_names, normalize_baseproducts, ColumnVectorizer
+from utils.utils import clean_company_names, normalize_baseproducts, ColumnVectorizer
 
 
 
