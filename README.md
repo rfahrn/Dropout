@@ -5,7 +5,10 @@ DropOut Model for Adherence vs. Non-Adherence Prediction Code
 sas/python/handover/handover/dropoutmodel.py (scripte log -- log file für baseline )
 
 ## parameter -  segment product 
-parameter 
+- parameter 
+- sentiment analysis - complaints (pos,neg,neutral) - train add column.
+- use that as additional feature  (and if no complaint add - neutral)
+- 
 
 ## Classes: 
 1. preprocessing/preprocessing.py : 
