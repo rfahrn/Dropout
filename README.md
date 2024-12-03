@@ -1,6 +1,5 @@
 # Dropout
 DropOut Model for Adherence vs. Non-Adherence Prediction Code 
-For MediService AG 
 ---
 ## Baseline
 sas/python/handover/handover/dropoutmodel.py (scripte log -- log file für baseline )
