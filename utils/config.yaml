@@ -50,3 +50,8 @@ WHOLE_DATA: P:\python\handover\handover\Generated data\whole_data.pkl
 TESTING_WHOLE_DATA_OUTPUT: P:\python\handover\handover\Testing\test_all.csv
 
 
+LOGGING:
+  LOG_FILE: "./logs/log.txt" 
+  LOG_LEVEL: "DEBUG"         
+  LOG_FORMAT: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"  
+  LOG_DATE_FORMAT: "%Y-%m-%d %H:%M:%S"  

@@ -3,50 +3,73 @@ import os
 import sys
 import polars as pl
 from utils.utils import clean_company_names, normalize_baseproducts, ColumnVectorizer
-
-
-
-# Import libraries
-import os
 import yaml
 import numpy as np
-import polars as pl
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
-
-import optuna
+import argparse
+from sklearn.model_selection import train_test_split
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 import matplotlib.pyplot as plt
+import optuna
 import seaborn as sns
 from datetime import timedelta
+import datetime
+import logging
 
 # Set paths from config
 with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-DATA_PATH = config["DATA_PATH"]
-PROCESSED_DATA_PATH = config["PROCESSED_DATA_PATH"]
+#DATA_PATH = config["DATA_PATH"]
+#PROCESSED_DATA_PATH = config["PROCESSED_DATA_PATH"]
 
+class Config:
+    def __init__(self, config_path):
+        with open(config_path, "r") as f:
+            self.config = yaml.safe_load(f)
+#    def get(self, key):
+#        return self.config.get(key)
+#os.makedirs(PROCESSED_DATA_PATH, exist_ok=True)
 
-# Ensure output directory exists
-os.makedirs(PROCESSED_DATA_PATH, exist_ok=True)
+class DataLoader:
+    def __init__(self, config, start_date=None, adr_typ=None, exclude_product_type=None,):
+        self.data_path = config.get("DATA_PATH")
+        self.processed_data_path = config.get("PROCESSED_DATA_PATH")
+        self.target_column = config.get("TARGET_COLUMN")
+        os.makedirs(self.processed_data_path, exist_ok=True)
 
+    def load_datasets(self, segment=None):
+        logging.info("Loading datasets...")
+        lazy_df = pl.scan_csv(f"{self.data_path}\ordcustprod.csv", has_header=True,infer_schema_length=5000,low_memory=True, try_parse_dates=True,encoding="utf8",rechunk=False,truncate_ragged_lines=True,ignore_errors=True)
+        lazy_df = lazy_df.sort("cust_no", "transaction_dte")
+        df = lazy_df.collect() 
+        art_info = pl.read_csv(f"{self.data_path}\ART_INFO.csv", has_header=True)
+        molecules = pl.read_csv(f"{self.data_path}\molecules.csv", has_header=True)
+        if segment and segment.lower() != "all":
+            logging.info(f"Filtering data for segment: {segment}")
+            df = df.filter(pl.col("segment_col") == segment)
 
-def load_data():
-    lazy_df = pl.scan_csv(f"{DATA_PATH}\ordcustprod.csv",has_header=True,
-    infer_schema_length=5000, 
-    low_memory=True,
-    try_parse_dates=True,
-    encoding="utf8",        
-    rechunk=False   ,
-    truncate_ragged_lines=True,
-    ignore_errors=True)
-    lazy_df = lazy_df.sort("cust_no", "transaction_dte")
-    df = lazy_df.collect() # Load the data into memory
-    art_info = pl.read_csv(f"{DATA_PATH}/ART_INFO.csv")
-    molecules = pl.read_csv(f"{DATA_PATH}/molecules.csv")
-    return df, art_info, molecules
+        # exclude specific product types
+        if self.exclude_product_type:
+            logging.info(f"Excluding Product Type: {self.exclude_product_type}...")
+            excluded_customers = df.filter(pl.col("Product Type") == self.exclude_product_type)["cust_no"].unique()
+            df = df.filter(~pl.col("cust_no").is_in(excluded_customers))
 
+        logging.info("Data loaded successfully.")
+        return df, art_info, molecules
+
+class Preprocessor:
+    def __init__(self, max_columns=1000000): # default value = 100000
+        self.max_columns = max_columns
+
+    def preprocess(self, df, art_info, molecules):
+        print("Preprocessing data...")
+        df = df.with_columns(pl.col("Mixed DOT").fill_null(0))
+        print(df.head(self.max_columns))
+        return df
 
 # Clean and preprocess data
 def preprocess_data(df, art_info, molecules):

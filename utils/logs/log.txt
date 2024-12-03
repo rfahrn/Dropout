@@ -1,0 +1,12 @@
+2024-12-03 10:42:19 - root - DEBUG - This is a DEBUG level message
+2024-12-03 10:42:19 - root - INFO - This is an INFO level message
+2024-12-03 10:42:19 - root - WARNING - This is a WARNING level message
+2024-12-03 10:42:19 - root - ERROR - This is an ERROR level message
+2024-12-03 10:42:19 - root - CRITICAL - This is a CRITICAL level message
+2024-12-03 10:43:51 - root - DEBUG - This is a DEBUG level message
+2024-12-03 10:43:51 - root - INFO - This is an INFO level message
+2024-12-03 10:43:51 - root - WARNING - This is a WARNING level message
+2024-12-03 10:43:51 - root - ERROR - This is an ERROR level message
+2024-12-03 10:43:51 - root - CRITICAL - This is a CRITICAL level message
+2024-12-03 10:51:00 - root - INFO - Starting the main program...
+2024-12-03 10:51:00 - root - INFO - Finished running the main program.
