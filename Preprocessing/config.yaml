@@ -1,0 +1,12 @@
+
+
+
+DATA_PATH: P:\python\Rebecka\data\
+
+
+
+PROCESSED_DATA_PATH: P:\python\Rebecka\processed\processed_data
+TRAIN_FILE: P:\python\Rebecka\Preprocessing\train_data.csv
+VAL_FILE: P:\python\Rebecka\Preprocessing\val_data.csv
+TEST_FILE: P:\python\Rebecka\Preprocessing\test_data.csv
+TARGET_COLUMN: active_flag

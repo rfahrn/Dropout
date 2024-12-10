@@ -59,14 +59,11 @@ class Preprocessor:
         return df
     
     def calculate_additional_features(self, df):
-        # calculate difference in days between transactions
         df = df.with_columns((pl.col("transaction_dte") - pl.col("prev_transaction_dte_over_cust_no")).dt.total_days().alias("days_since_prev_cust_no"))
-        # calculate affinity components
         df = df.with_columns([
             (pl.col("days_since_prev") / pl.col("mixed_mean_DOT")).fill_null(0).alias("time_factor"),
             pl.when(pl.col("product_atc") != pl.col("prev_product_atc")).then(1).otherwise(0).alias("atc_similarity_factor"),
-            pl.when(pl.col("pharm_no") != pl.col("prev_pharm_no")).then(1).otherwise(0).alias("product_change_factor")
-        ])
+            pl.when(pl.col("pharm_no") != pl.col("prev_pharm_no")).then(1).otherwise(0).alias("product_change_factor")])
 
         # calculate product switch affinity
         df = df.with_columns((pl.col("time_factor") + pl.col("atc_similarity_factor") + pl.col("product_change_factor")).alias("product_switch_affinity"))
@@ -74,7 +71,6 @@ class Preprocessor:
 
 # Clean and preprocess data
 def preprocess_data(df, art_info, molecules):
-    # Join additional information
     art_info = art_info.with_columns(pl.col("PHARMACODE").cast(pl.Int64)).rename({"PHARMACODE": "official Pharmacode"})
     art_info_filtered = art_info.select(["ART_ANR", "ART_BASENAME", "ART_FULLNAME", "ART_FORM", "CONCT", "ART_MULTIPL",  "official Pharmacode"])
     df2 = df.with_columns(pl.col("official Pharmacode").cast(pl.Int64))
@@ -82,11 +78,8 @@ def preprocess_data(df, art_info, molecules):
     molecules_filtered = molecules.select(["ART_ANR", "MolText","MONO COMBI"]) 
     df2 = df2.join(molecules_filtered, on="ART_ANR", how="left")
     df2 = df2.filter(pl.col("Product ATC (WHO)").is_not_null() & pl.col("Product ATC (EPHMRA)").is_not_null())
-
-
     df2 = df2.sort("cust_no", "transaction_dte")
     df2 = df2.with_columns([pl.col("Product DOT/Unit PCG").fill_null(1.0)])
-
     df2 = df2.with_columns(pl.when(pl.col("Product ATC (WHO)").is_not_null()).then(pl.col("Product ATC (EPHMRA)").str.slice(0, 6)).otherwise(pl.col("Product ATC (EPHMRA)").str.slice(0, 6)).alias("product_atc"))
 
     # Add previous transaction details within the same customer group

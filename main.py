@@ -6,6 +6,7 @@ from train import train_model
 from evaluate import evaluate_model, explain_model
 from utils import ColumnVectorizer
 import polars as pl
+import numpy as np
 
 def main(args):
     config = Config(args.config).config
@@ -49,6 +50,7 @@ def main(args):
     explain_model(model, X_test, feature_names=feature_cols)
 
 if __name__ == "__main__":
+    # load tadatfiel 
     parser = argparse.ArgumentParser(description="Preprocess and train model for adherence prediction.")
     parser.add_argument('--config', type=str, default="config.yaml", help='Path to the config file.')
     parser.add_argument('--segment', type=str, default="all", help='Segment to filter data.')

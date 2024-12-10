@@ -34,7 +34,7 @@ class DataLoader:
         molecules = pl.read_csv(f"{self.data_path}\molecules.csv", has_header=True)
         if segment and segment.lower() != "all":
             logging.info(f"Filtering data for segment: {segment}")
-            df = df.filter(pl.col("segment_col") == segment)
+            df = df.filter(pl.col("Product Segment") == segment)
         if self.exclude_product_type:
             
             logging.info(f"Excluding Product Type: {self.exclude_product_type}...")
