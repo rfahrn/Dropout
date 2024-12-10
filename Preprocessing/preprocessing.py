@@ -2,7 +2,7 @@
 import os
 import sys
 import polars as pl
-from utils.utils import clean_company_names, normalize_baseproducts, ColumnVectorizer
+from utils import clean_company_names, normalize_baseproducts, ColumnVectorizer
 import yaml
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -18,58 +18,22 @@ import seaborn as sns
 from datetime import timedelta
 import datetime
 import logging
+from tqdm import tqdm
 
 # Set paths from config
 with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-#DATA_PATH = config["DATA_PATH"]
-#PROCESSED_DATA_PATH = config["PROCESSED_DATA_PATH"]
-
-class Config:
-    def __init__(self, config_path):
-        with open(config_path, "r") as f:
-            self.config = yaml.safe_load(f)
-#    def get(self, key):
-#        return self.config.get(key)
-#os.makedirs(PROCESSED_DATA_PATH, exist_ok=True)
-
-class DataLoader:
-    def __init__(self, config, start_date=None, adr_typ=None, exclude_product_type=None,):
-        self.data_path = config.get("DATA_PATH")
-        self.processed_data_path = config.get("PROCESSED_DATA_PATH")
-        self.target_column = config.get("TARGET_COLUMN")
-        os.makedirs(self.processed_data_path, exist_ok=True)
-
-    def load_datasets(self, segment=None):
-        logging.info("Loading datasets...")
-        lazy_df = pl.scan_csv(f"{self.data_path}\ordcustprod.csv", has_header=True,infer_schema_length=5000,low_memory=True, try_parse_dates=True,encoding="utf8",rechunk=False,truncate_ragged_lines=True,ignore_errors=True)
-        lazy_df = lazy_df.sort("cust_no", "transaction_dte")
-        df = lazy_df.collect() 
-        art_info = pl.read_csv(f"{self.data_path}\ART_INFO.csv", has_header=True)
-        molecules = pl.read_csv(f"{self.data_path}\molecules.csv", has_header=True)
-        if segment and segment.lower() != "all":
-            logging.info(f"Filtering data for segment: {segment}")
-            df = df.filter(pl.col("segment_col") == segment)
-
-        if self.exclude_product_type:
-            logging.info(f"Excluding Product Type: {self.exclude_product_type}...")
-            excluded_customers = df.filter(pl.col("Product Type") == self.exclude_product_type)["cust_no"].unique()
-            df = df.filter(~pl.col("cust_no").is_in(excluded_customers))
-
-        logging.info("Data loaded successfully.")
-        return df, art_info, molecules
 
 class Preprocessor:
-    def __init__(self, max_columns=1000000): # default value = 100000
+    def __init__(self, max_columns=1000000): # default 
         self.max_columns = max_columns
 
-    def preprocess(self, df, art_info, molecules):
+    def preprocess(self, df):
         # Run all preprocessing steps in sequence
         print("Starting preprocessing...")
-        df = self.join_product_and_molecule_data(df, art_info, molecules)
-        df = self.filter_and_sort_data(df)
-        df = self.add_previous_transaction_features(df)
+        df = self.filter_and_sort_data(df) # get product_atc and fill null values and sort 
+        df = self.add_previous_transaction_features(df) # add previous transaction details to get a lag feature
         df = self.calculate_additional_features(df)
         df = self.calculate_unique_products_and_affinity(df)
         df = self.calculate_median_dot_stats(df)
@@ -78,15 +42,6 @@ class Preprocessor:
         print("Preprocessing completed.")
         return df
     
-    def join_product_and_molecule_data(self, df, art_info, molecules):
-        art_info = art_info.with_columns(pl.col("PHARMACODE").cast(pl.Int64)).rename({"PHARMACODE": "official Pharmacode"})
-        art_info_filtered = art_info.select(["ART_ANR", "ART_BASENAME", "ART_FULLNAME", "ART_FORM", "CONCT", "ART_MULTIPL", "official Pharmacode"])
-        df = df.with_columns(pl.col("official Pharmacode").cast(pl.Int64))
-        df = df.join(art_info_filtered, on="official Pharmacode", how="inner")
-
-        molecules_filtered = molecules.select(["ART_ANR", "MolText", "MONO COMBI"])
-        df = df.join(molecules_filtered, on="ART_ANR", how="left")
-        return df
     
     def filter_and_sort_data(self, df):
         df = df.filter(pl.col("Product ATC (WHO)").is_not_null() & pl.col("Product ATC (EPHMRA)").is_not_null())
@@ -106,7 +61,6 @@ class Preprocessor:
     def calculate_additional_features(self, df):
         # calculate difference in days between transactions
         df = df.with_columns((pl.col("transaction_dte") - pl.col("prev_transaction_dte_over_cust_no")).dt.total_days().alias("days_since_prev_cust_no"))
-
         # calculate affinity components
         df = df.with_columns([
             (pl.col("days_since_prev") / pl.col("mixed_mean_DOT")).fill_null(0).alias("time_factor"),
