@@ -1,49 +1,50 @@
 import polars as pl
 from utils import clean_company_names, normalize_baseproducts
 from datetime import timedelta
-from sklearn.preprocessing import LabelEncoder  
+from sklearn.preprocessing import LabelEncoder
+from typing import Optional, List, Dict, Any
 
 class Preprocessor:
     """
-    A Preprocessor class to clean, filter, and engineer features from a given DataFrame of transactions.
+    A flexible Preprocessor class to clean, filter, and engineer features from transaction-level data.
     
     Parameters
     ----------
+    atc_columns : List[str], optional
+        List of ATC-related columns to filter and slice.
+    time_window_days : int, optional
+        Default time window for recent purchases (default=180 days).
     max_columns : int, optional
-        Maximum number of columns to process (default=1,000,000).
-
-    Methods
-    -------
-    preprocess(df):
-        Runs the entire preprocessing pipeline on the input DataFrame.
+        Maximum number of columns to process.
     """
 
-    def __init__(self, max_columns=1000000):
+    def __init__(self,atc_columns: Optional[List[str]] = None,time_window_days: int = 180,max_columns: int = 1_000_000):
+        self.atc_columns = atc_columns or ["Product ATC (WHO)", "Product ATC (EPHMRA)"]
+        self.time_window_days = time_window_days
         self.max_columns = max_columns
+        self.label_encoders: Dict[str, LabelEncoder] = {}
 
     def preprocess(self, df: pl.DataFrame) -> pl.DataFrame:
         """
-        Execute the full preprocessing pipeline on the given DataFrame.
-        
-        Parameters
-        ----------
-        df : pl.DataFrame
-            The raw transaction-level data.
-        
-        Returns
-        -------
-        pl.DataFrame
-            The preprocessed DataFrame with engineered features.
+        Run the full preprocessing pipeline.
         """
         print("Starting preprocessing...")
         
         df = self.filter_and_sort_data(df)
-        df = self.add_previous_transaction_features(df)
-        df = self.calculate_additional_features(df)
-        df = self.calculate_unique_products_and_affinity(df)
-        df = self.calculate_median_dot_stats(df)
-        df = self.calculate_adherence(df)
-        df = self.clean_and_normalize_data(df)
+        df = self.add_transaction_features(df)
+        df = self.calculate_customer_metrics(df)
+        df = self.add_adherence_metrics(df)
+        df = self.calculate_product_affinity(df)
+        df = self.normalize_and_clean_data(df)
+        df = self.encode_categorical_columns(df)
+
+        #df = self.add_previous_transaction_features(df)
+        #df = self.calculate_additional_features(df)
+        #df = self.calculate_unique_products_and_affinity(df)
+        #df = self.calculate_median_dot_stats(df)
+        #df = self.calculate_adherence(df)
+        #df = self.clean_and_normalize_data(df)
+        #df = self.encode_categorical_columns(df)
 
         print("Preprocessing completed.")
         return df
@@ -53,25 +54,83 @@ class Preprocessor:
         Filter out rows without product ATC codes and sort by customer and transaction date.
         Also, generate a short product_atc code column.
         """
-        # Filter rows that must have ATC WHO & ATC EPHMRA
-        df = df.filter(
-            pl.col("Product ATC (WHO)").is_not_null() & pl.col("Product ATC (EPHMRA)").is_not_null()
+        return (
+            df.filter(
+                pl.col(self.atc_columns[0]).is_not_null() &
+                pl.col(self.atc_columns[1]).is_not_null()
+            )
+            .sort(["cust_no", "transaction_dte"])
+            .with_columns([
+                pl.col("Product DOT/Unit PCG").fill_null(1.0),
+                pl.col(self.atc_columns[1]).str.slice(0, 6).alias("product_atc")
+            ])
         )
-
-        # Sort by cust_no and transaction date
-        df = df.sort(["cust_no", "transaction_dte"])
-
-        # Fill null values in Product DOT/Unit PCG
+    
+    def add_transaction_features(self, df: pl.LazyFrame) -> pl.LazyFrame:
+        """Add transaction-level features."""
+        return df.with_columns([
+            pl.col("transaction_dte").shift(1).over("cust_no").alias("prev_transaction_dte"),
+            (pl.col("transaction_dte") - pl.col("prev_transaction_dte")).dt.total_days()
+            .alias("days_since_prev"),
+            pl.col("Mixed DOT").mean().over("cust_no").alias("mean_mixed_DOT"),
+        ])
+    
+    def calculate_customer_metrics(self, df: pl.LazyFrame) -> pl.LazyFrame:
+        """Calculate RFM and interorder metrics."""
+        return df.group_by("cust_no").agg([
+            pl.col("transaction_dte").max().alias("last_purchase"),
+            (pl.col("transaction_dte").max() - pl.col("transaction_dte").min()).dt.total_days()
+            .alias("purchase_duration_days"),
+            pl.count("ord_no").alias("order_frequency"),
+            pl.col("Mixed DOT").mean().alias("avg_mixed_DOT"),
+        ])
+    
+    def add_adherence_metrics(self, df: pl.LazyFrame) -> pl.LazyFrame:
+        """Compute adherence scores and refill behavior."""
         df = df.with_columns(
-            pl.col("Product DOT/Unit PCG").fill_null(1.0)
+            pl.when(pl.col("days_since_prev").is_not_null())
+            .then(pl.col("days_since_prev") / pl.col("mean_mixed_DOT"))
+            .otherwise(None)
+            .alias("refill_ratio")
         )
 
-        # Create a unified product_atc code from the first 6 chars of ATC (EPHMRA)
-        df = df.with_columns(
-            pl.col("Product ATC (EPHMRA)").str.slice(0, 6).alias("product_atc")
+        return df.with_columns([
+            pl.when(pl.col("refill_ratio") < 0.9).then(1).otherwise(0).alias("early_refill"),
+            pl.when(pl.col("refill_ratio") > 1.1).then(1).otherwise(0).alias("late_refill"),
+            (1 / (1 + (pl.col("refill_ratio") - 1).abs())).alias("adherence_score"),
+        ])
+    
+    def calculate_product_affinity(self, df: pl.LazyFrame) -> pl.LazyFrame:
+        """Calculate product diversity and affinity scores."""
+        product_stats = df.group_by("cust_no").agg([
+            pl.col("product_atc").n_unique().alias("unique_product_classes"),
+            pl.col("product_atc").count().alias("total_product_count"),
+        ])
+        return df.join(product_stats, on="cust_no").with_columns(
+            (1 - (1 / pl.col("unique_product_classes"))).alias("product_affinity_score")
         )
 
+    def normalize_and_clean_data(self, df: pl.LazyFrame) -> pl.LazyFrame:
+        """Clean and normalize textual columns."""
+        if "Product Company" in df.columns:
+            df = clean_company_names(df, "Product Company")
+        if "Product Basename" in df.columns:
+            df = normalize_baseproducts(df, "Product Basename")
         return df
+
+    def encode_categorical_columns(self, df: pl.LazyFrame) -> pl.LazyFrame:
+        """Encode categorical columns using LabelEncoder."""
+        categorical_columns = ["dominant_refill_trend", "product_atc"]
+
+        for col in categorical_columns:
+            if col in df.columns:
+                le = LabelEncoder()
+                col_values = df.select(pl.col(col)).collect().to_series()
+                encoded = le.fit_transform(col_values.to_list())
+                self.label_encoders[col] = le
+                df = df.with_columns(pl.Series(name=f"{col}_encoded", values=encoded))
+        return df
+
 
     def add_previous_transaction_features(self, df: pl.DataFrame) -> pl.DataFrame:
         """
