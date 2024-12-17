@@ -117,9 +117,7 @@ class Preprocessor:
         ])
 
         df = df.with_columns(
-            (pl.col("time_factor") + pl.col("atc_similarity_factor") + pl.col("product_change_factor"))
-            .alias("product_switch_affinity")
-        )
+            (pl.col("time_factor") + pl.col("atc_similarity_factor") + pl.col("product_change_factor")).alias("product_switch_affinity"))
 
         return df
 
@@ -274,11 +272,11 @@ class Preprocessor:
 
         # Calculate proportions and dominant trend
         df = df.with_columns([
-            (pl.col("Improving") / (pl.col("Improving")+pl.col("Stable")+pl.col("Declining")))
+            (pl.col("Improving") / (pl.col("Improving") + pl.col("Stable") + pl.col("Declining")))
             .fill_null(0).alias("proportion_improving"),
-            (pl.col("Stable") / (pl.col("Improving")+pl.col("Stable")+pl.col("Declining")))
+            (pl.col("Stable") / (pl.col("Improving") + pl.col("Stable") + pl.col("Declining")))
             .fill_null(0).alias("proportion_stable"),
-            (pl.col("Declining") / (pl.col("Improving")+pl.col("Stable")+pl.col("Declining")))
+            (pl.col("Declining") / (pl.col("Improving") + pl.col("Stable") + pl.col("Declining")))
             .fill_null(0).alias("proportion_declining")
         ])
 
@@ -290,6 +288,15 @@ class Preprocessor:
             .otherwise("Stable")
             .alias("dominant_refill_trend")
         )
+
+        # Now 'dominant_refill_trend' is still a string, so we can safely do string comparisons:
+        df = df.with_columns([
+            pl.when(pl.col("dominant_refill_trend") == "Improving").then(1).otherwise(0).alias("improving_flag"),
+            pl.when(pl.col("dominant_refill_trend") == "Declining").then(1).otherwise(0).alias("declining_flag"),
+            pl.when(pl.col("dominant_refill_trend") == "Stable").then(1).otherwise(0).alias("stable_flag"),
+        ])
+        df = df.with_columns(pl.col("dominant_refill_trend").cast(pl.Float32))
+
 
         df = df.with_columns(
             (pl.col("Improving") / (pl.col("Declining") + 1)).alias("itd_ratio")
