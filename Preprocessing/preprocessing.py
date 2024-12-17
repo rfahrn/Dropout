@@ -1,4 +1,3 @@
-# upload file from one folder above 
 import os
 import sys
 import polars as pl
@@ -20,12 +19,35 @@ import datetime
 import logging
 from tqdm import tqdm
 
-# Set paths from config
-with open("config.yaml", "r") as f:
+with open("config.yaml", "r") as f: # load config file
     config = yaml.safe_load(f)
 
 
 class Preprocessor:
+    """
+    Preprocessor class to preprocess the data
+    
+    Args:
+    max_columns: int, default=1000000 Maximum number of columns to process
+        
+    Methods:
+        preprocess: Preprocess the data
+        
+        filter_and_sort_data: Filter and sort the data
+        
+        add_previous_transaction_features: Add previous transaction features
+        
+        calculate_additional_features: Calculate additional features
+        
+        calculate_unique_products_and_affinity: Calculate unique products and affinity
+        
+        calculate_median_dot_stats: Calculate median DOT stats
+        
+        calculate_adherence: Calculate adherence
+
+        clean_and_normalize_data: Clean and normalize the data
+        
+    """
     def __init__(self, max_columns=1000000): # default 
         self.max_columns = max_columns
 
